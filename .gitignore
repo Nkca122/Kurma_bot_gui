@@ -1,2 +1,6 @@
+/* All Files to be ignored by github */
+
 *.pt
 *__pycache__
+screenshots
+

@@ -1,54 +1,19 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QMenuBar, QToolBar, QTabWidget
-from PySide6.QtGui import QIcon, QAction, QPixmap
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QToolBar
+from PySide6.QtGui import QIcon, QAction
+
 
 from datetime import datetime
 import sys
 import os
 
 sys.path.append(os.path.abspath("./tabs"))
+sys.path.append(os.path.abspath("./widgets"))
+
 from tab import Tab
+from tab_widget import TabWidget
 
-class TabWidget(QTabWidget):
-    def selectedTab(self):
-        return self.currentIndex()
 
-    def __delete_current_tab(self):
-        index = self.selectedTab()
-        self.__deleteTab(index)
-    
-    def menubar(self):
-        # Menu Bar
-        menubar = QMenuBar()
-        # Tab Menu
-        tab_menu = menubar.addMenu("Tabs")
 
-        # Create Tab
-        create_tab = QAction("Create a New Tab", self)
-        create_tab.triggered.connect(self.__createTab)
-        create_tab.setShortcut("Ctrl+Shift+N")
-
-        # Delete Tab
-        delete_tab = QAction("Delete Tab", self)
-        delete_tab.triggered.connect(self.__delete_current_tab)
-        delete_tab.setShortcut("Ctrl+Shift+del")
-
-        tab_menu.addAction(create_tab)
-        tab_menu.addAction(delete_tab)
-
-        return menubar
-    def __init__(self):
-        super().__init__()
-        self.setTabsClosable(True)
-        self.setMovable(True)
-        self.tabCloseRequested.connect(self.__deleteTab)
-        self.addTab(Tab("New Tab"), "New Tab")
-
-    def __createTab(self):
-        self.addTab(Tab("New Tab"), "New Tab")
-    
-    def __deleteTab(self, index):
-        self.removeTab(index)
 
 class MainWindow(QMainWindow):
     def __toolbar(self):
@@ -96,7 +61,6 @@ class MainWindow(QMainWindow):
 
         # Addition of toolbar
         self.__toolbar()
-
         # Display Tabs
         self.tab_widget = TabWidget()
         self.setMenuBar(self.tab_widget.menubar())
@@ -111,7 +75,7 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    app = QApplication()
+    app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
     app.exec()

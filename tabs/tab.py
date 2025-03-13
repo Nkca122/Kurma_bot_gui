@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMenuBar, QMenu, QComboBox, QWidgetAction
 from PySide6.QtCore import QTimer
 import cv2
 import sys
@@ -16,19 +16,15 @@ class Tab(QWidget):
         super().__init__()
         self.title = title
         self.layout = QVBoxLayout()
-
-        # Add mode selector local vs wifi connectivity ( Later )
-
         self.image = Image()
         self.result = Image()
         image_layout = QHBoxLayout()
+        self.mode = "Local"
 
         image_layout.addWidget(self.image)
         image_layout.addWidget(self.result)
 
-
         self.mode_selector = ModeSelect(["None", "Detection", "Segmentation", "Pose Detection"])
-
 
         self.layout.addLayout(image_layout)
         self.layout.addWidget(self.mode_selector)
@@ -42,15 +38,16 @@ class Tab(QWidget):
         self.detector = Detector()
 
     def update(self):
-        if Tab.cap.isOpened():
-            ret, frame = Tab.cap.read()
-            if ret:
-                self.image.display(frame, "Local Feed")
-                mode = self.mode_selector.get_selected_mode()
-                if mode == None: 
-                    mode = "none"
-                res_frame, res = self.detector.predict(frame, mode)
-                self.result.display(res_frame, "Result")
+        if self.mode == "Local":
+            if Tab.cap.isOpened():
+                ret, frame = Tab.cap.read()
+                if ret:
+                    self.image.display(frame, "Local Feed")
+                    mode = self.mode_selector.get_selected_mode()
+                    if mode == None: 
+                        mode = "none"
+                    res_frame, res = self.detector.predict(frame, mode)
+                    self.result.display(res_frame, "Result")
 
 
                 
