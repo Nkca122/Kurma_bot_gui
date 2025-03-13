@@ -1,21 +1,56 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QMenuBar, QToolBar, QTabWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QMenuBar, QToolBar, QTabWidget, QComboBox, QWidgetAction
+from PySide6.QtMultimedia import QMediaDevices
 from PySide6.QtGui import QIcon, QAction, QPixmap
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 from datetime import datetime
 import sys
 import os
+import cv2
 
 sys.path.append(os.path.abspath("./tabs"))
 from tab import Tab
 
+class CameraList(QComboBox):
+    def __init__(self):
+        super().__init__()
+
 class TabWidget(QTabWidget):
+    def __update_camera_list(self):
+        video_inputs = QMediaDevices.videoInputs()
+        cams = [(i, cam.description()) for i, cam in enumerate(video_inputs)]
+        self.camera_selection.clear()
+        for cam in cams:
+            self.camera_selection.addItem(cam[1])
+
+        if self.camera_selection.count() > 0:
+            self.__change_camera(0)
+
+    def __create_camera_menu(self, camera_menu):
+        self.camera_selection = QComboBox(self)
+        video_inputs = QMediaDevices.videoInputs()
+        cams = [(i, cam.description()) for i, cam in enumerate(video_inputs)]
+        for cam in cams:
+            self.camera_selection.addItem(cam[1])
+        self.camera_selection.setCurrentIndex(0)  # Default camera
+        # Create a QWidgetAction to add the QComboBox to the menu
+        camera_selection_action = QWidgetAction(self)
+        camera_selection_action.setDefaultWidget(self.camera_selection)
+        # Set the first camera as active
+        self.__change_camera(0)
+        # Update camera selection
+        self.camera_selection.currentIndexChanged.connect(self.__change_camera)
+        camera_menu.addAction(camera_selection_action)
+
     def selectedTab(self):
         return self.currentIndex()
 
     def __delete_current_tab(self):
         index = self.selectedTab()
         self.__deleteTab(index)
+
+    def __change_camera(self, idx):
+        Tab.cap = cv2.VideoCapture(idx)
     
     def menubar(self):
         # Menu Bar
@@ -33,6 +68,10 @@ class TabWidget(QTabWidget):
         delete_tab.triggered.connect(self.__delete_current_tab)
         delete_tab.setShortcut("Ctrl+Shift+del")
 
+        # Camera Menu
+        camera_menu = menubar.addMenu("Camera")
+        self.__create_camera_menu(camera_menu)
+
         tab_menu.addAction(create_tab)
         tab_menu.addAction(delete_tab)
 
@@ -43,6 +82,10 @@ class TabWidget(QTabWidget):
         self.setMovable(True)
         self.tabCloseRequested.connect(self.__deleteTab)
         self.addTab(Tab("New Tab"), "New Tab")
+
+        self.camera_refresh_timer = QTimer(self)
+        self.camera_refresh_timer.timeout.connect(self.__update_camera_list)
+        self.camera_refresh_timer.start(3000)  # Refresh every 3 seconds
 
     def __createTab(self):
         self.addTab(Tab("New Tab"), "New Tab")
@@ -96,7 +139,7 @@ class MainWindow(QMainWindow):
 
         # Addition of toolbar
         self.__toolbar()
-
+        self.camera_selection = None
         # Display Tabs
         self.tab_widget = TabWidget()
         self.setMenuBar(self.tab_widget.menubar())
@@ -111,7 +154,7 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    app = QApplication()
+    app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
     app.exec()
