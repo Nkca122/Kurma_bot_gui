@@ -1,5 +1,12 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QToolBar
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QVBoxLayout,
+    QHBoxLayout,
+    QToolBar,
+)
+from PySide6.QtGui import QIcon, QAction, QPixmap, QImage
+from PySide6.QtCore import Qt
 
 
 from datetime import datetime
@@ -12,66 +19,86 @@ sys.path.append(os.path.abspath("./widgets"))
 from tab import Tab
 from tab_widget import TabWidget
 
-
+vw = 800
+vh = 600
 
 
 class MainWindow(QMainWindow):
-    def __toolbar(self):
-        toolbar = QToolBar("", self)
+    def take_screenshot(self):
+        screenshot_bit_map = QPixmap(self.size())
+        self.tab_widget.currentWidget().render(screenshot_bit_map)
 
-        
-        # Take Screenshot
-        screenshot = QAction(QIcon(), "Screenshot", self)
+        save_path = f"./screenshots/{str(datetime.now()).replace(" ", "_").replace(":", "_").replace(".", "_")}.png"
+        screenshot_bit_map.save(save_path)
+
+    def __screenshot_action_btn(self):
+        screenshot = QAction(QIcon("./assets/screenshot_icon.jpeg"), "Screenshot", self)
         screenshot.triggered.connect(self.take_screenshot)
+
+        return screenshot
+
+    def __toolbar(self):
+        toolbar = QToolBar("Main Window", self)
+
+        # Take Screenshot
 
         toolbar.setMovable(False)
         toolbar.setStyleSheet(
             """
             QToolBar {
-                padding: 16px;
-                background: #e3e3e3;
+                padding: 8px;
+                background: #000000;
+                color: #ffffff;
             }
 
-            QToolBar QToolButton { /* Ensure it applies only to buttons inside the toolbar */
-                background: #ff0000;
-                border: 1px solid black; /* Ensure visible edges */
-                padding: 5px;
+            QToolBar QToolButton {
+                background: #000000;
+                border: 1px solid black;
                 border-radius: 4px;
             }
 
             QToolBar QToolButton:hover {
-                background: #00ff00;
+                background: #000000;
+                border: 1px solid white;
+                border-radius: 4px;
             }
 
-            QToolBar QToolButton:pressed {
-                background: #0000ff;
+            QToolBar QToolTip {
+                background: #000000;
+                border-radius: 0px;
+                border: none;
+                padding: 8px;
             }
         """
         )
-
-        toolbar.addAction(screenshot)
-
+        toolbar.addAction(self.__screenshot_action_btn())
         # Finish Toolbar
         self.addToolBar(toolbar)
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("KURMA BOT GUI")
-        self.setGeometry(0, 0, 800, 600)
+        self.setWindowTitle("kurma bot GUI")
+        self.setGeometry(0, 0, vw, vh)
+
+        self.setStyleSheet(
+            """
+            QMenuBar {
+                background-color: black;
+                color: white;
+            }
+
+            QMenuBar::item:selected {
+                background-color: gray;
+            }
+            """
+        )
 
         # Addition of toolbar
         self.__toolbar()
         # Display Tabs
-        self.tab_widget = TabWidget()
-        self.setMenuBar(self.tab_widget.menubar())
-        self.setCentralWidget(self.tab_widget)
-
-    def take_screenshot(self):
-        screenshot_bit_map = QPixmap(self.size())
-        self.tab_widget.render(screenshot_bit_map)
-
-        save_path = f"./screenshots/{str(datetime.now()).replace(" ", "_").replace(":", "_").replace(".", "_")}.png"
-        screenshot_bit_map.save(save_path)
+        self.__tab_widget = TabWidget()
+        self.setMenuBar(self.__tab_widget.menubar())
+        self.setCentralWidget(self.__tab_widget)
 
 
 def main():
