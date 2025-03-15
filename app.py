@@ -26,7 +26,7 @@ vh = 600
 class MainWindow(QMainWindow):
     def take_screenshot(self):
         screenshot_bit_map = QPixmap(self.size())
-        self.tab_widget.currentWidget().render(screenshot_bit_map)
+        self.__tab_widget.currentWidget().render(screenshot_bit_map)
 
         save_path = f"./screenshots/{str(datetime.now()).replace(" ", "_").replace(":", "_").replace(".", "_")}.png"
         screenshot_bit_map.save(save_path)
