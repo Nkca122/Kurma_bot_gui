@@ -67,6 +67,17 @@ class TabWidget(QTabWidget):
     def menubar(self):
         # Menu Bar
         menubar = QMenuBar()
+        menubar.setStyleSheet(
+            """
+                QMenuBar {
+                    background: #000000;
+                    padding: 8px;
+                    color: #ffffff;
+                    font-size: 16px;
+                    font-weight: bold;
+                }
+            """
+        )
         # Tab Menu
         tab_menu = menubar.addMenu("Tabs")
 

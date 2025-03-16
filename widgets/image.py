@@ -9,8 +9,19 @@ class Image(QWidget):
 
         # Title Label
         self.__title_label = QLabel()
+        self.__title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         # Image Label to display the cv2 frame
         self.__image_label = QLabel()
+        self.__image_label.setStyleSheet(
+            """
+             QWidget QLabel:hover {
+                border-radius: 4px;
+                background: #ffffff;
+                color: #000000;
+            }
+            """
+        )
 
         # Creation of Widget
         self.__layout.addWidget(self.__title_label)
@@ -19,8 +30,12 @@ class Image(QWidget):
 
         self.setStyleSheet(
         """
-            QWidget QLabel::pane {
-                background-color: red;
+            QWidget QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 4px;
+                border: 0.5px solid white;
+                padding: 8px;
             }
         """
         )
