@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath("./utils"))
 from image import Image
 from mode_select import ModeSelect
 from detector import Detector
+from controls import Controller
 
 class Tab(QWidget):
     cap = cv2.VideoCapture(0)
@@ -19,15 +20,20 @@ class Tab(QWidget):
         self.image = Image()
         self.result = Image()
         image_layout = QHBoxLayout()
+        control_layout = QHBoxLayout()
         self.mode = "Local"
 
         image_layout.addWidget(self.image)
         image_layout.addWidget(self.result)
 
         self.mode_selector = ModeSelect(["None", "Detection", "Segmentation", "Pose Detection"])
+        self.controller = Controller() 
+
+        control_layout.addWidget(self.mode_selector)
+        control_layout.addWidget(self.controller)
 
         self.layout.addLayout(image_layout)
-        self.layout.addWidget(self.mode_selector)
+        self.layout.addLayout(control_layout)
 
         self.setLayout(self.layout)
 
