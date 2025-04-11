@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtGui import QAction
 from PySide6.QtMultimedia import QMediaDevices
-from tabs.tab import Tab
+from tabs.model_tab import Tab
 
 
 class TabWidget(QTabWidget):

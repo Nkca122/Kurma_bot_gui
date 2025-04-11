@@ -17,7 +17,7 @@ from utils.camera_manager import CameraManager
 
 class Tab(QWidget):
     update_result_signal = Signal(np.ndarray)
-
+    camera_manager = CameraManager()
     def __init__(self, title):
         super().__init__()
 
@@ -27,11 +27,15 @@ class Tab(QWidget):
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.closed = False
 
-        self._apply_zoom_theme()
+        self._apply_theme()
+        self.dark_mode_toggle = QCheckBox("Dark Mode")
+        self.dark_mode_toggle.setChecked(True)
+        self.dark_mode_toggle.toggled.connect(self.toggle_dark_mode)
 
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(10)
         self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.addWidget(self.dark_mode_toggle)
 
         # Image display
         self.image = Image()
@@ -52,9 +56,6 @@ class Tab(QWidget):
         # Controls
         self.mode_selector = ModeSelect(["None", "Detection", "Segmentation", "Pose Detection"])
         self.controller = Controller()
-        self.dark_mode_toggle = QCheckBox("Dark Mode")
-        self.dark_mode_toggle.setChecked(True)
-        self.dark_mode_toggle.toggled.connect(self.toggle_dark_mode)
 
         for widget in (self.controller, self.mode_selector):
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -63,7 +64,6 @@ class Tab(QWidget):
         control_layout.setSpacing(10)
         control_layout.addWidget(self.mode_selector)
         control_layout.addWidget(self.controller)
-        control_layout.addWidget(self.dark_mode_toggle)
 
         control_group = QGroupBox()
         control_group.setLayout(control_layout)
@@ -73,8 +73,7 @@ class Tab(QWidget):
         self.layout.addWidget(control_group)
 
         # Camera
-        self.camera_manager = CameraManager()
-        self.camera_manager.frame_ready.connect(self.process_frame)
+        Tab.camera_manager.frame_ready.connect(self.process_frame)
 
         self.update_result_signal.connect(self._update_result_image)
         self.frame_count = 0
@@ -138,11 +137,11 @@ class Tab(QWidget):
 
     def toggle_dark_mode(self, enabled):
         if enabled:
-            self._apply_zoom_theme()
+            self._apply_theme()
         else:
             self._apply_light_theme()
 
-    def _apply_zoom_theme(self):
+    def _apply_theme(self):
         self.setStyleSheet(
             """
             QWidget {
