@@ -6,51 +6,59 @@ class Image(QWidget):
     def __init__(self):
         super().__init__()
         self.__layout = QVBoxLayout()
+        self.__layout.setContentsMargins(10, 10, 10, 10)
+        self.__layout.setSpacing(6)
 
         # Title Label
         self.__title_label = QLabel()
         self.__title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Image Label to display the cv2 frame
-        self.__image_label = QLabel()
-        self.__image_label.setStyleSheet(
-            """
-             QWidget QLabel:hover {
-                border-radius: 4px;
-                background: #ffffff;
-                color: #000000;
+        self.__title_label.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                font-weight: 600;
+                color: #333333;
             }
-            """
-        )
-
-        # Creation of Widget
-        self.__layout.addWidget(self.__title_label)
-        self.__layout.addWidget(self.__image_label)
-        self.__layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.setStyleSheet(
-        """
-            QWidget QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 4px;
-                border: 0.5px solid white;
-                padding: 8px;
-            }
-        """
-        )
-
-        self.setLayout(self.__layout)
-    
-    def display(self, frame, title = "Untitled"):
-        # Frame Processing
-        h, w, ch = frame.shape
-        bytes_per_line = ch*w
-        qImg = QImage(frame.data, w, h, bytes_per_line, QImage.Format_BGR888)
+        """)
 
         # Image Label
-        self.__image_label.setMaximumSize(w, h)
+        self.__image_label = QLabel()
+        self.__image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.__image_label.setStyleSheet("""
+            QLabel {
+                border: 2px solid #cccccc;
+                border-radius: 12px;
+                background-color: #ffffff;
+            }
+            QLabel:hover {
+                border: 2px solid #7aa9ff;
+                background-color: #f8faff;
+            }
+        """)
+        self.__image_label.setMinimumSize(320, 240)
+        self.__image_label.setScaledContents(True)
+
+        # Assemble layout
+        self.__layout.addWidget(self.__title_label)
+        self.__layout.addWidget(self.__image_label)
+        self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setLayout(self.__layout)
+
+        # Outer style for widget
+        self.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+                border-radius: 10px;
+            }
+        """)
+
+    def display(self, frame, title="Untitled"):
+        # Convert OpenCV frame to QImage
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
+        qImg = QImage(frame.data, w, h, bytes_per_line, QImage.Format.Format_BGR888)
+
+        # Set image
         self.__image_label.setPixmap(QPixmap.fromImage(qImg))
 
-        # Title Label
+        # Set title
         self.__title_label.setText(title)

@@ -25,7 +25,6 @@ class Detector():
         if detector_mode:
             if mode == "detection":
                 detection = detector_mode
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 results = detection.predict(frame)
 
                 if results:
@@ -43,12 +42,11 @@ class Detector():
                 return frame, results
             elif mode == "segmentation":
                 segmenatation = detector_mode
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 results = segmenatation.predict(frame, conf=0.7)
 
                 if results:
                     for res in results:
-                        for idx, mask in enumerate(res.masks.data):
+                         for idx, mask in enumerate(res.masks.data):
                             mask = mask.cpu().numpy()
                             mask = (mask*255).astype(np.uint8)
                             mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
@@ -65,10 +63,10 @@ class Detector():
                                 colored_mask[:, :, c] = np.where(mask > 128, self.colors[obj_key][c], 0)
 
                             frame = cv2.addWeighted(frame, 1, colored_mask, 1, 1)
+                                        
                 return frame, results
             elif mode == "pose detection":
                 pose_detector = detector_mode
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 results = pose_detector.predict(frame, conf=0.7)
 
                 if results:
