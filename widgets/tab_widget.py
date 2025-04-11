@@ -1,164 +1,164 @@
-from PySide6.QtWidgets import QTabWidget, QMenuBar, QInputDialog
-from PySide6.QtGui import QAction
-import sys
-import os
+from PySide6.QtWidgets import (
+    QTabWidget, QMenuBar, QInputDialog, QPushButton,
+    QWidgetAction, QMenu
+)
 
-sys.path.append(os.path.abspath("./tabs"))
-from tab import Tab
+from PySide6.QtGui import QAction
+from PySide6.QtMultimedia import QMediaDevices
+from tabs.tab import Tab
 
 
 class TabWidget(QTabWidget):
-    def __create_tab_action_fn(self):
-        input, status = QInputDialog.getText(
-            self, "kurma bot GUI", "Enter the name for the new tab"
-        )
-        if status:
-            title = self.__manage_tab_titles(input)
-            self.__createTab(title)
-
-    def __delete_tab_action_fn(self, index):
-        tab_counted_title = self.tabText(index)
-        tab_title_key = tab_counted_title[:-4]
-
-        self.__tab_names[tab_title_key].remove(tab_counted_title)
-        self.__tab_names[tab_title_key].sort()
-        self.__deleteTab(index)
-
-    def __createTab(self, title):
-        self.addTab(Tab(title), title)
-
-    def __deleteTab(self, index):
-        self.removeTab(index)
-
-    def __manage_tab_titles(self, title):
-        res = None
-        if not title:
-            res = "Untitled Tab"
-        else:
-            res = title
-
-        uncounted_res = res
-
-        if uncounted_res in self.__tab_names.keys():
-            missing_ct = None
-            for i, tab in enumerate(self.__tab_names[uncounted_res]):
-                print(f"{tab}, {i}")
-                if tab != f"{uncounted_res} ({i})":
-                    missing_ct = i
-                    break
-
-            if missing_ct == None:
-                missing_ct = len(self.__tab_names[res])
-
-            res = f"{res} ({missing_ct})"
-            print(res)
-            self.__tab_names[uncounted_res].append(res)
-            self.__tab_names[uncounted_res].sort()
-        else:
-            res = f"{res} ({0})"
-            self.__tab_names[uncounted_res] = [res]
-
-        print(self.__tab_names)
-        return res
-
-    def getSelectedTab(self):
-        return self.currentIndex()
-
     def menubar(self):
-        # Menu Bar
         menubar = QMenuBar()
-        menubar.setStyleSheet(
-            """
-                QMenuBar {
-                    background: #000000;
-                    padding: 8px;
-                    color: #ffffff;
-                    font-size: 16px;
-                    font-weight: bold;
-                }
-            """
-        )
-        # Tab Menu
+        menubar.setStyleSheet("""
+            QMenuBar {
+                background-color: #1e1e1e;
+                padding: 6px 12px;
+                color: #f0f0f0;
+                font-size: 15px;
+                font-weight: bold;
+            }
+            QMenuBar::item {
+                background: transparent;
+                padding: 4px 10px;
+                margin: 0 4px;
+            }
+            QMenuBar::item:selected {
+                background: #2d2d2d;
+                border-radius: 6px;
+            }
+            QMenu {
+                background-color: #1e1e1e;
+                color: #f0f0f0;
+                border: 1px solid #3a3a3a;
+            }
+            QMenu::item {
+                padding: 6px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #3a3a3a;
+            }
+            QPushButton {
+                background-color: #282828;
+                color: #ffffff;
+                border: 1px solid #555;
+                padding: 4px 12px;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #444;
+            }
+        """)
+
+        # Tabs Menu
         tab_menu = menubar.addMenu("Tabs")
 
-        ## Create Tab
-        create_tab = QAction("Create a New Tab", self)
-        create_tab.triggered.connect(self.__create_tab_action_fn)
-        create_tab.setShortcut("Ctrl+Shift+N")
+        create_tab_action = QAction("Create New Tab", self)
+        create_tab_action.setShortcut("Ctrl+Shift+N")
+        create_tab_action.triggered.connect(self.__create_tab_action_fn)
 
-        ## Delete Tab
-        delete_tab = QAction("Delete Tab", self)
-        delete_tab.triggered.connect(self.__delete_tab_action_fn)
-        delete_tab.setShortcut("Ctrl+Shift+del")
+        delete_tab_action = QAction("Delete Current Tab", self)
+        delete_tab_action.setShortcut("Ctrl+Shift+Del")
+        delete_tab_action.triggered.connect(
+            lambda: self.__delete_tab_action_fn(self.currentIndex())
+        )
+
+        tab_menu.addAction(create_tab_action)
+        tab_menu.addAction(delete_tab_action)
 
         # Camera Menu
+        camera_menu = menubar.addMenu("Camera")
+        self.camera_actions = []
 
-        tab_menu.addAction(create_tab)
-        tab_menu.addAction(delete_tab)
+        def update_camera(device):
+            self.widget[self.getSelectedTab()].shared_camera_manager.set_camera(device)
+
+        for device in QMediaDevices.videoInputs():
+            action = QAction(device.description(), self)
+            action.triggered.connect(lambda checked=False, d=device: update_camera(d))
+            camera_menu.addAction(action)
+            self.camera_actions.append(action)
+
+        # Add quick create button
+        create_tab_button = QPushButton("➕ New Tab")
+        create_tab_button.clicked.connect(self.__create_tab_action_fn)
+
+        create_tab_widget_action = QWidgetAction(self)
+        create_tab_widget_action.setDefaultWidget(create_tab_button)
+        menubar.addAction(create_tab_widget_action)
 
         return menubar
 
     def __init__(self):
         super().__init__()
         self.__tab_names = {"Untitled Tab": ["Untitled Tab (0)"]}
-
         self.setTabsClosable(True)
         self.setMovable(True)
 
         self.setStyleSheet("""
-        QTabWidget::pane { 
-            border: 0.5px solid white; 
-            background-color: black; 
-        }
-
-        QTabBar::tab {
-            background-color: black;
-            color: white;
-            padding: 8px 15px;
-            border: 0.5px solid white;
-            border-radius: 4px 4px 0px 0px;
-        }
-
-        QTabBar::tab:selected {
-            background-color: white;
-            color: black;
-        }
-
-        QTabBar::tab:hover {
-            background-color: gray;
-        }
-
-        QInputDialog {
-            background-color: black;
-            color: white;
-            border: 1px solid white;
-        }
-
-        QLineEdit {
-            background-color: black;
-            color: white;
-            border: none;
-            border-bottom: 2px solid white;
-            padding: 5px;
-            font-size: 16px;
-        }
-
-        QDialogButtonBox {
-            background-color: black;
-            color: white;
-        }
-
-        QDialogButtonBox QPushButton {
-            background-color: black;
-            color: white;
-            border: 1px solid white;
-            padding: 5px 10px;
-        }
-
-        QDialogButtonBox QPushButton:hover {
-            background-color: gray;
-        }
+            QTabWidget::pane {
+                border: none;
+                background-color: #121212;
+            }
+            QTabBar::tab {
+                background-color: #2c2c2c;
+                color: #ddd;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                font-weight: 600;
+                font-size: 14px;
+            }
+            QTabBar::tab:selected {
+                background-color: #ffffff;
+                color: #1a1a1a;
+            }
+            QTabBar::tab:hover {
+                background-color: #444;
+            }
         """)
 
         self.addTab(Tab("Untitled Tab (0)"), "Untitled Tab (0)")
         self.tabCloseRequested.connect(self.__delete_tab_action_fn)
+
+    def __create_tab_action_fn(self):
+        title_input, confirmed = QInputDialog.getText(
+            self, "Fasal Guru", "Enter a name for the new tab:"
+        )
+        if confirmed:
+            tab_title = self.__generate_unique_tab_title(title_input)
+            self.__create_tab(tab_title)
+
+    def __delete_tab_action_fn(self, index):
+        if index < 0:
+            return
+        tab_label = self.tabText(index)
+        base_title = tab_label.rsplit(" (", 1)[0]
+        self.__tab_names[base_title].remove(tab_label)
+        if not self.__tab_names[base_title]:
+            del self.__tab_names[base_title]
+        self.__remove_tab(index)
+
+    def __create_tab(self, title):
+        self.addTab(Tab(title), title)
+
+    def __remove_tab(self, index):
+        self.removeTab(index)
+
+    def __generate_unique_tab_title(self, base_title: str) -> str:
+        base_title = base_title.strip() or "Untitled Tab"
+        if base_title not in self.__tab_names:
+            self.__tab_names[base_title] = [f"{base_title} (0)"]
+            return f"{base_title} (0)"
+        existing_titles = self.__tab_names[base_title]
+        used_indices = {int(title.rsplit("(", 1)[-1][:-1]) for title in existing_titles}
+        new_index = next(i for i in range(len(used_indices) + 1) if i not in used_indices)
+        new_title = f"{base_title} ({new_index})"
+        self.__tab_names[base_title].append(new_title)
+        return new_title
+
+    def getSelectedTab(self):
+        return self.currentIndex()

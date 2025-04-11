@@ -1,113 +1,106 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy
-from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QMediaDevices, QVideoSink
-from PySide6.QtCore import QTimer, Slot, Signal
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QSizePolicy, QCheckBox
+)
+from PySide6.QtCore import Slot, Signal
 from PySide6.QtGui import QImage
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import cv2
-import sys
-import os
-from threading import Thread
 
-sys.path.append(os.path.abspath("./widgets"))
-sys.path.append(os.path.abspath("./utils"))
-
-from image import Image
-from mode_select import ModeSelect
-from detector import Detector
-from controls import Controller
+from widgets.image import Image
+from widgets.mode_select import ModeSelect
+from widgets.controls import Controller
+from utils.detector import Detector
+from utils.camera_manager import CameraManager
 
 
 class Tab(QWidget):
-    update_result_signal = Signal(np.ndarray)  # Custom signal to safely update result image
+    update_result_signal = Signal(np.ndarray)
 
     def __init__(self, title):
         super().__init__()
-        self.title = title
 
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f2f2f2;
-                font-family: Arial;
-            }
-            QGroupBox {
-                border: 2px solid #999;
-                border-radius: 8px;
-                margin-top: 10px;
-                font-weight: bold;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                top: -7px;
-                background-color: transparent;
-                padding: 0 3px;
-            }
-        """)
+        self.title = title
+        self.detector = None
+        self.processing = False
+        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.closed = False
+
+        self._apply_zoom_theme()
 
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(15, 15, 15, 15)
-        self.layout.setSpacing(12)
+        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(10, 10, 10, 10)
 
-        # Image previews
+        # Image display
         self.image = Image()
         self.result = Image()
-        self.image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        for widget in (self.image, self.result):
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            widget.setStyleSheet("border-radius: 10px; background-color: #1e1e1e;")
 
         image_layout = QHBoxLayout()
         image_layout.setSpacing(10)
         image_layout.addWidget(self.image)
         image_layout.addWidget(self.result)
 
-        image_group = QGroupBox("Camera Feed & Result")
+        image_group = QGroupBox()
         image_group.setLayout(image_layout)
+        image_group.setStyleSheet("border: none;")
 
-        # Controls section
+        # Controls
         self.mode_selector = ModeSelect(["None", "Detection", "Segmentation", "Pose Detection"])
         self.controller = Controller()
+        self.dark_mode_toggle = QCheckBox("Dark Mode")
+        self.dark_mode_toggle.setChecked(True)
+        self.dark_mode_toggle.toggled.connect(self.toggle_dark_mode)
+
+        for widget in (self.controller, self.mode_selector):
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         control_layout = QHBoxLayout()
         control_layout.setSpacing(10)
         control_layout.addWidget(self.mode_selector)
         control_layout.addWidget(self.controller)
+        control_layout.addWidget(self.dark_mode_toggle)
 
-        control_group = QGroupBox("Controls")
+        control_group = QGroupBox()
         control_group.setLayout(control_layout)
+        control_group.setStyleSheet("border: none;")
 
-        # Add groups to main layout
         self.layout.addWidget(image_group)
         self.layout.addWidget(control_group)
 
-        # Setup detector
-        self.detector = Detector()
+        # Camera
+        self.camera_manager = CameraManager()
+        self.camera_manager.frame_ready.connect(self.process_frame)
 
-        # Setup Qt Camera
-        self.capture_session = QMediaCaptureSession()
-        self.video_sink = QVideoSink()
-        self.capture_session.setVideoSink(self.video_sink)
-        self.video_sink.videoFrameChanged.connect(self.process_frame)
-
-        cameras = QMediaDevices.videoInputs()
-        if not cameras:
-            print("No camera found!")
-            return
-
-        self.camera = QCamera(cameras[0])
-        self.capture_session.setCamera(self.camera)
-        self.camera.start()
-
-        # Connect signal to display function
         self.update_result_signal.connect(self._update_result_image)
+        self.frame_count = 0
+        self.process_every_nth_frame = 2
 
     def threaded_predict(self, frame_np, mode):
+        if self.processing or self.closed:
+            return
+        self.processing = True
+
+        if self.detector is None:
+            self.detector = Detector()
+
         def run():
             try:
-                res_frame, _ = self.detector.predict(frame_np.copy(), mode)
-                self.update_result_signal.emit(res_frame)  # Emit result frame to main thread
+                resized_frame = cv2.resize(frame_np, (320, 240))
+                res_frame, _ = self.detector.predict(resized_frame, mode)
+                res_frame = cv2.resize(res_frame, (frame_np.shape[1], frame_np.shape[0]))
+                if not self.closed:
+                    self.update_result_signal.emit(res_frame)
             except Exception as e:
                 print("Threaded detection error:", e)
-        Thread(target=run, daemon=True).start()
+            finally:
+                self.processing = False
+
+        self.executor.submit(run)
 
     @Slot(np.ndarray)
     def _update_result_image(self, result_frame):
@@ -115,7 +108,11 @@ class Tab(QWidget):
 
     @Slot("QVideoFrame")
     def process_frame(self, frame):
-        if not frame.isValid():
+        if self.closed or not frame.isValid():
+            return
+
+        self.frame_count += 1
+        if self.frame_count % self.process_every_nth_frame != 0:
             return
 
         img = frame.toImage().convertToFormat(QImage.Format.Format_BGR888)
@@ -125,13 +122,99 @@ class Tab(QWidget):
 
         ptr = img.bits()
         arr = bytes(ptr)
-        frame_np = np.frombuffer(arr, dtype=np.uint8).reshape(
-            (height, bytes_per_line // 3, 3)
-        )[:, :width]
+        frame_np = (
+            np.frombuffer(arr, dtype=np.uint8)
+            .reshape((height, bytes_per_line // 3, 3))[:, :width]
+            .copy()
+        )
 
-        # Show original frame
-        self.image.display(frame_np.copy(), "Local Feed")
+        self.image.display(frame_np, "Local Feed")
 
-        # Get selected mode and run prediction in thread
-        mode = self.mode_selector.get_selected_mode().lower() or "none"
-        self.threaded_predict(frame_np.copy(), mode)
+        mode = (self.mode_selector.get_selected_mode() or "none").lower()
+        if mode == "none":
+            self.update_result_signal.emit(frame_np)
+        else:
+            self.threaded_predict(frame_np, mode)
+
+    def toggle_dark_mode(self, enabled):
+        if enabled:
+            self._apply_zoom_theme()
+        else:
+            self._apply_light_theme()
+
+    def _apply_zoom_theme(self):
+        self.setStyleSheet(
+            """
+            QWidget {
+                font-family: 'Segoe UI';
+                background-color: #121212;
+                color: #e0e0e0;
+                border: none;
+            }
+            QGroupBox {
+                border: none;
+            }
+            QLabel, QPushButton, QComboBox {
+                font-size: 14px;
+                background: transparent;
+                border: none;
+            }
+            QComboBox {
+                padding: 6px 10px;
+                border-radius: 8px;
+                background-color: #2a2a2a;
+            }
+            QPushButton {
+                padding: 6px 12px;
+                border-radius: 8px;
+                background-color: #2d2d2d;
+            }
+            QPushButton:hover {
+                background-color: #3a3a3a;
+            }
+            QCheckBox {
+                padding: 4px;
+            }
+            """
+        )
+
+    def _apply_light_theme(self):
+        self.setStyleSheet(
+            """
+            QWidget {
+                font-family: 'Segoe UI';
+                background-color: #f0f0f0;
+                color: #000000;
+                border: none;
+            }
+            QGroupBox {
+                border: none;
+            }
+            QLabel, QPushButton, QComboBox {
+                font-size: 14px;
+                background: transparent;
+                border: none;
+            }
+            QComboBox {
+                padding: 6px 10px;
+                border-radius: 8px;
+                background-color: #ffffff;
+            }
+            QPushButton {
+                padding: 6px 12px;
+                border-radius: 8px;
+                background-color: #e0e0e0;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QCheckBox {
+                padding: 4px;
+            }
+            """
+        )
+
+    def closeEvent(self, event):
+        self.closed = True
+        self.executor.shutdown(wait=False)
+        super().closeEvent(event)
