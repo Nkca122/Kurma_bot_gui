@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QSizePolicy, QCheckBox
+    QVBoxLayout,
+    QHBoxLayout,
+    QGroupBox,
+    QSizePolicy,
 )
-from PySide6.QtCore import Slot, Signal
+from PySide6.QtCore import Slot
 from PySide6.QtGui import QImage
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
@@ -12,15 +14,12 @@ from widgets.image import Image
 from widgets.mode_select import ModeSelect
 from widgets.controls import Controller
 from utils.detector import Detector
-from utils.camera_manager import CameraManager
+from tabs.tab import Tab
 
 
-class Tab(QWidget):
-    update_result_signal = Signal(np.ndarray)
-    camera_manager = CameraManager()
+class ModelTab(Tab):
     def __init__(self, title):
         super().__init__()
-
         self.title = title
         self.detector = None
         self.processing = False
@@ -28,14 +27,10 @@ class Tab(QWidget):
         self.closed = False
 
         self._apply_theme()
-        self.dark_mode_toggle = QCheckBox("Dark Mode")
-        self.dark_mode_toggle.setChecked(True)
-        self.dark_mode_toggle.toggled.connect(self.toggle_dark_mode)
 
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(10)
         self.layout.setContentsMargins(10, 10, 10, 10)
-        self.layout.addWidget(self.dark_mode_toggle)
 
         # Image display
         self.image = Image()
@@ -54,7 +49,9 @@ class Tab(QWidget):
         image_group.setStyleSheet("border: none;")
 
         # Controls
-        self.mode_selector = ModeSelect(["None", "Detection", "Segmentation", "Pose Detection"])
+        self.mode_selector = ModeSelect(
+            ["None", "Detection", "Segmentation", "Pose Detection"]
+        )
         self.controller = Controller()
 
         for widget in (self.controller, self.mode_selector):
@@ -73,7 +70,7 @@ class Tab(QWidget):
         self.layout.addWidget(control_group)
 
         # Camera
-        Tab.camera_manager.frame_ready.connect(self.process_frame)
+        self.camera_manager.frame_ready.connect(self.process_frame)
 
         self.update_result_signal.connect(self._update_result_image)
         self.frame_count = 0
@@ -91,7 +88,9 @@ class Tab(QWidget):
             try:
                 resized_frame = cv2.resize(frame_np, (320, 240))
                 res_frame, _ = self.detector.predict(resized_frame, mode)
-                res_frame = cv2.resize(res_frame, (frame_np.shape[1], frame_np.shape[0]))
+                res_frame = cv2.resize(
+                    res_frame, (frame_np.shape[1], frame_np.shape[0])
+                )
                 if not self.closed:
                     self.update_result_signal.emit(res_frame)
             except Exception as e:
@@ -177,41 +176,6 @@ class Tab(QWidget):
             """
         )
 
-    def _apply_light_theme(self):
-        self.setStyleSheet(
-            """
-            QWidget {
-                font-family: 'Segoe UI';
-                background-color: #f0f0f0;
-                color: #000000;
-                border: none;
-            }
-            QGroupBox {
-                border: none;
-            }
-            QLabel, QPushButton, QComboBox {
-                font-size: 14px;
-                background: transparent;
-                border: none;
-            }
-            QComboBox {
-                padding: 6px 10px;
-                border-radius: 8px;
-                background-color: #ffffff;
-            }
-            QPushButton {
-                padding: 6px 12px;
-                border-radius: 8px;
-                background-color: #e0e0e0;
-            }
-            QPushButton:hover {
-                background-color: #d0d0d0;
-            }
-            QCheckBox {
-                padding: 4px;
-            }
-            """
-        )
 
     def closeEvent(self, event):
         self.closed = True

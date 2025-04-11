@@ -2,10 +2,11 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QLabel
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 
+
 class Controller(QWidget):
 
     def __button_hold_action(self):
-        self.command = self.sender().text() 
+        self.command = self.sender().text()
         self.__command_label.setText(f"{self.command}")
 
     def __button_release_action(self):
@@ -47,11 +48,37 @@ class Controller(QWidget):
 
         self.setStyleSheet(
             """
-                QWidget QPushButton{
-                    height: 32px;
-                    width: 32px;
-                }
-            """
+    QWidget {
+        font-family: 'Segoe UI';
+        background-color: transparent;
+    }
+
+    QPushButton {
+        height: 40px;
+        width: 80px;
+        border: 1px solid #444;
+        border-radius: 10px;
+        background-color: #2e2e2e;
+        color: #f0f0f0;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    QPushButton:hover {
+        background-color: #3a3a3a;
+        border: 1px solid #666;
+    }
+
+    QLabel {
+        background-color: #1a1a1a;
+        color: #f0f0f0;
+        font-size: 14px;
+        border-radius: 6px;
+        padding: 6px 12px;
+        border: 1px solid #333;
+        min-width: 80px;
+    }
+    """
         )
 
         self.__controls()

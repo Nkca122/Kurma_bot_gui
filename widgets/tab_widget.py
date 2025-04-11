@@ -1,56 +1,73 @@
 from PySide6.QtWidgets import (
-    QTabWidget, QMenuBar, QInputDialog, QPushButton,
-    QWidgetAction, QMenu
+    QTabWidget,
+    QMenuBar,
+    QInputDialog,
+    QPushButton,
+    QWidgetAction,
+    QMenu,
 )
 
 from PySide6.QtGui import QAction
 from PySide6.QtMultimedia import QMediaDevices
-from tabs.model_tab import Tab
+from tabs.tab import Tab
+from tabs.model_tab import ModelTab
 
 
 class TabWidget(QTabWidget):
     def menubar(self):
         menubar = QMenuBar()
-        menubar.setStyleSheet("""
-            QMenuBar {
-                background-color: #1e1e1e;
-                padding: 6px 12px;
-                color: #f0f0f0;
-                font-size: 15px;
-                font-weight: bold;
-            }
-            QMenuBar::item {
-                background: transparent;
-                padding: 4px 10px;
-                margin: 0 4px;
-            }
-            QMenuBar::item:selected {
-                background: #2d2d2d;
-                border-radius: 6px;
-            }
-            QMenu {
-                background-color: #1e1e1e;
-                color: #f0f0f0;
-                border: 1px solid #3a3a3a;
-            }
-            QMenu::item {
-                padding: 6px 20px;
-            }
-            QMenu::item:selected {
-                background-color: #3a3a3a;
-            }
-            QPushButton {
-                background-color: #282828;
-                color: #ffffff;
-                border: 1px solid #555;
-                padding: 4px 12px;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #444;
-            }
-        """)
+        menubar.setStyleSheet(
+            """
+    QMenuBar {
+        background-color: #1e1e1e;
+        padding: 6px 12px;
+        color: #f0f0f0;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    QMenuBar::item {
+        background: transparent;
+        padding: 6px 12px;
+        margin: 0 4px;
+        border-radius: 6px;
+    }
+
+    QMenuBar::item:selected {
+        background-color: #2a2a2a;
+    }
+
+    QMenu {
+        background-color: #232323;
+        color: #f0f0f0;
+        border: 1px solid #3a3a3a;
+        font-size: 13px;
+    }
+
+    QMenu::item {
+        padding: 6px 18px;
+        border-radius: 4px;
+    }
+
+    QMenu::item:selected {
+        background-color: #3a3a3a;
+    }
+
+    QPushButton {
+        background-color: #303030;
+        color: #ffffff;
+        border: 1px solid #555;
+        padding: 6px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    QPushButton:hover {
+        background-color: #3e3e3e;
+        border: 1px solid #777;
+    }
+    """
+        )
 
         # Tabs Menu
         tab_menu = menubar.addMenu("Tabs")
@@ -73,7 +90,7 @@ class TabWidget(QTabWidget):
         self.camera_actions = []
 
         def update_camera(device):
-            self.widget[self.getSelectedTab()].shared_camera_manager.set_camera(device)
+            Tab.shared_camera_manager.set_camera(device)
 
         for device in QMediaDevices.videoInputs():
             action = QAction(device.description(), self)
@@ -97,31 +114,57 @@ class TabWidget(QTabWidget):
         self.setTabsClosable(True)
         self.setMovable(True)
 
-        self.setStyleSheet("""
-            QTabWidget::pane {
-                border: none;
-                background-color: #121212;
-            }
-            QTabBar::tab {
-                background-color: #2c2c2c;
-                color: #ddd;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                font-weight: 600;
-                font-size: 14px;
-            }
-            QTabBar::tab:selected {
-                background-color: #ffffff;
-                color: #1a1a1a;
-            }
-            QTabBar::tab:hover {
-                background-color: #444;
-            }
-        """)
+        self.setStyleSheet(
+            """
+    QTabWidget::pane {
+        border: none;
+        background-color: #121212;
+    }
 
-        self.addTab(Tab("Untitled Tab (0)"), "Untitled Tab (0)")
+    QTabBar {
+        qproperty-drawBase: 0;
+        background-color: #1e1e1e;
+        padding: 4px 8px;
+    }
+
+    QTabBar::tab {
+        background-color: #2a2a2a;
+        color: #cccccc;
+        padding: 6px 14px;
+        margin-right: 4px;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        font-weight: normal;
+        font-size: 12px;
+        min-width: 80px;
+    }
+
+    QTabBar::tab:selected {
+        background-color: #3a3a3a;
+        color: #ffffff;
+    }
+
+    QTabBar::tab:hover {
+        background-color: #444444;
+    }
+
+    QTabBar::close-button {
+        image: url(./assets/close.svg);
+        subcontrol-position: left;
+        padding: 1px;
+        margin-left: 4px;
+        background-color: #ff4444;
+        border-radius: 4px;
+    }
+
+    QTabBar::close-button:hover {
+        background-color: #ff0000;
+        
+    }
+"""
+        )
+
+        self.addTab(ModelTab("Untitled Tab (0)"), "Untitled Tab (0)")
         self.tabCloseRequested.connect(self.__delete_tab_action_fn)
 
     def __create_tab_action_fn(self):
@@ -143,7 +186,7 @@ class TabWidget(QTabWidget):
         self.__remove_tab(index)
 
     def __create_tab(self, title):
-        self.addTab(Tab(title), title)
+        self.addTab(ModelTab(title), title)
 
     def __remove_tab(self, index):
         self.removeTab(index)
@@ -155,7 +198,9 @@ class TabWidget(QTabWidget):
             return f"{base_title} (0)"
         existing_titles = self.__tab_names[base_title]
         used_indices = {int(title.rsplit("(", 1)[-1][:-1]) for title in existing_titles}
-        new_index = next(i for i in range(len(used_indices) + 1) if i not in used_indices)
+        new_index = next(
+            i for i in range(len(used_indices) + 1) if i not in used_indices
+        )
         new_title = f"{base_title} ({new_index})"
         self.__tab_names[base_title].append(new_title)
         return new_title
